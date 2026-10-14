@@ -155,10 +155,6 @@ bee stream --agent    # live event stream — speak near your watch to see utter
 
 ---
 
-## Project status
-
-Early development for the Amazon Developer Hackathon 2026 (submission deadline **24 Oct 2026**).
-
 ## License
 
 [MIT](LICENSE)
