@@ -1,0 +1,13 @@
+node_modules/
+.env
+data/
+# Recorded Bee events contain real conversations.
+fixtures/
+*.db
+*.db-journal
+.DS_Store
+watch/**/xcuserdata/
+watch/**/DerivedData/
+watch/Secrets.xcconfig
+watch/SideKick.xcodeproj/
+watch/SideKick/Info.plist

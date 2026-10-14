@@ -1,0 +1,27 @@
+name: SideKick
+options:
+  bundleIdPrefix: dev.sidekick
+  deploymentTarget:
+    watchOS: "10.0"
+configFiles:
+  Debug: Config.xcconfig
+  Release: Config.xcconfig
+targets:
+  SideKick:
+    type: application
+    platform: watchOS
+    sources: [SideKick]
+    info:
+      path: SideKick/Info.plist
+      properties:
+        CFBundleDisplayName: SideKick
+        WKApplication: true
+        WKWatchOnly: true
+        SideKickBaseURL: $(SIDEKICK_BASE_URL)
+        SideKickToken: $(SIDEKICK_TOKEN)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SIDEKICK_BUNDLE_ID)
+        DEVELOPMENT_TEAM: $(SIDEKICK_TEAM_ID)
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "4"

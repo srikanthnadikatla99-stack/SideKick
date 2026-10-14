@@ -1,0 +1,28 @@
+{
+  "name": "sidekick",
+  "version": "0.1.0",
+  "description": "Real-time social memory powered by Bee",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "replay": "SIDEKICK_SOURCE=replay tsx src/main.ts",
+    "record": "tsx src/scripts/record.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1149.0",
+    "@beeai/cli": "^0.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

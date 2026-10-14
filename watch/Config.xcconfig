@@ -1,0 +1,7 @@
+SIDEKICK_BUNDLE_ID = dev.sidekick.watch
+SIDEKICK_TEAM_ID =
+SIDEKICK_BASE_URL =
+SIDEKICK_TOKEN =
+
+// Machine-specific values (team, tunnel URL, token) live in the gitignored Secrets.xcconfig.
+#include? "Secrets.xcconfig"
