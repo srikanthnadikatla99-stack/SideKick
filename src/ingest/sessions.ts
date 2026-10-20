@@ -10,13 +10,21 @@ export type LiveSession = {
   startedAt: number;
 };
 
+const RECENT_LIMIT = 20;
+
 /** Per-conversation state for conversations currently being captured. */
 export class SessionStore {
   private byUuid = new Map<string, LiveSession>();
   private uuidById = new Map<number, string>();
+  // Ended conversations stay confirmable for a while; people often tap after the chat.
+  private recent = new Map<string, LiveSession>();
 
   get(uuid: string): LiveSession | undefined {
-    return this.byUuid.get(uuid);
+    return this.byUuid.get(uuid) ?? this.recent.get(uuid);
+  }
+
+  isLive(uuid: string): boolean {
+    return this.byUuid.has(uuid);
   }
 
   /** Returns the session the event belongs to, creating it lazily since streams are not ordered. */
@@ -48,8 +56,11 @@ export class SessionStore {
 
   end(uuid: string): void {
     const session = this.byUuid.get(uuid);
-    if (session?.conversationId !== undefined) this.uuidById.delete(session.conversationId);
+    if (!session) return;
+    if (session.conversationId !== undefined) this.uuidById.delete(session.conversationId);
     this.byUuid.delete(uuid);
+    this.recent.set(uuid, session);
+    if (this.recent.size > RECENT_LIMIT) this.recent.delete(this.recent.keys().next().value!);
   }
 
   private ensure(uuid: string): LiveSession {

@@ -36,7 +36,7 @@ export class Identifier {
 
   constructor(private deps: IdentifierDeps) {}
 
-  async identify(session: LiveSession): Promise<Identification> {
+  async identify(session: LiveSession, opts: { semantic?: boolean } = {}): Promise<Identification> {
     const { store } = this.deps;
     const link = store.getConversationLink(session.conversationUuid);
     if (link?.confirmed) {
@@ -79,7 +79,7 @@ export class Identifier {
     }
 
     const bestSoFar = Math.max(0, ...[...candidates.values()].map((c) => c.score));
-    const guess = await this.semanticGuess(session, bestSoFar, [...keywords]);
+    const guess = opts.semantic === false ? undefined : await this.semanticGuess(session, bestSoFar, [...keywords]);
     if (guess?.name) add(guess.name, guess.confidence * 0.7, guess.evidence);
 
     const best = [...candidates.values()].sort((a, b) => b.score - a.score)[0];

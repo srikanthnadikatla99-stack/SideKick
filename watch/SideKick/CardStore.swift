@@ -80,6 +80,7 @@ final class CardStore {
             apply(try await action())
         } catch {
             errorMessage = error.localizedDescription
+            WKInterfaceDevice.current().play(.failure)
         }
     }
 

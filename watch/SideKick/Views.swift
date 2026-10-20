@@ -22,6 +22,9 @@ struct CardView: View {
                 ForEach(card.dontForget, id: \.self) { Label($0, systemImage: "lightbulb").font(.footnote) }
                 ForEach(card.avoid, id: \.self) { Label($0, systemImage: "hand.raised").font(.footnote).foregroundStyle(.secondary) }
                 if !card.confirmed { confirmButtons }
+                if let error = store.errorMessage {
+                    Text(error).font(.caption2).foregroundStyle(.red)
+                }
             }
         }
     }
@@ -64,6 +67,9 @@ struct FollowUpView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(.yellow)
                 Button("Dismiss", role: .cancel) { Task { await store.dismissFollowUp() } }
+                if let error = store.errorMessage {
+                    Text(error).font(.caption2).foregroundStyle(.red)
+                }
             }
         }
     }

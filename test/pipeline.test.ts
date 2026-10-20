@@ -55,6 +55,37 @@ test("replay produces a card with open loops, then a follow-up written back to B
   assert.equal(approved.beeTodoId, "901");
   assert.deepEqual(todos, ["Send Sarah Chen the onboarding doc"]);
   assert.equal(hub.current().followUp, null);
+
+  // People often tap "Yes" after the conversation has already been processed.
+  await pipeline.confirm("conv-a", { name: "Sarah Chen" });
+  assert.equal(hub.current().card?.confirmed, true);
+  assert.equal(hub.current().card?.person?.name, "Sarah Chen");
+});
+
+test("a name-only card is published before the slow LLM pass finishes", async () => {
+  const store = new Store(":memory:");
+  const { bee } = fakeBee();
+  const { llm: fast } = fakeLlm();
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const llm = { ...fast, json: async <T>(s: string, u: string) => (await gate, fast.json<T>(s, u)) };
+  const hub = new Hub();
+  const pipeline = new Pipeline({
+    sessions: new SessionStore(),
+    identifier: new Identifier({ store, bee, llm, ownerNames: [] }),
+    assembler: new CardAssembler({ bee, llm, store }),
+    store,
+    bee,
+    llm,
+    hub,
+  });
+  await pipeline.handle({ kind: "utterance", conversationUuid: "c9", utterance: { speaker: "speaker_2", text: "Hi, I'm Sarah Chen", at: 0 } });
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(hub.current().card?.inferredName, "Sarah Chen");
+  assert.equal(hub.current().card?.howYouMet, undefined);
+  release();
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(hub.current().card?.howYouMet, "Lisbon conference");
 });
 
 test("API requires the bearer token and serves long-poll state", async (t) => {

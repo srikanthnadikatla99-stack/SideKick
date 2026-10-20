@@ -107,9 +107,13 @@ export function createApiServer(deps: { hub: Hub; pipeline: Pipeline; token: str
       throw new HttpError(404, "Not found");
     } catch (error) {
       if (error instanceof HttpError) return send(res, error.status, { error: error.message });
+      const expected = error instanceof Error && /not found|already resolved|no longer available|Unknown person/.test(error.message);
+      if (expected) {
+        console.warn("[server]", req.method, url.pathname, "→", (error as Error).message);
+        return send(res, 409, { error: (error as Error).message });
+      }
       console.error("[server]", error);
-      const message = error instanceof Error && /not found|already resolved|No live conversation|Unknown person/.test(error.message) ? error.message : "Internal error";
-      return send(res, message === "Internal error" ? 500 : 409, { error: message });
+      return send(res, 500, { error: "Internal error" });
     }
   });
 }

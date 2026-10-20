@@ -2,12 +2,12 @@ import Foundation
 
 enum SideKickError: LocalizedError {
     case notConfigured
-    case http(Int)
+    case http(Int, String?)
 
     var errorDescription: String? {
         switch self {
         case .notConfigured: "Set SIDEKICK_BASE_URL and SIDEKICK_TOKEN in Secrets.xcconfig"
-        case .http(let code): "Server returned \(code)"
+        case .http(let code, let message): message ?? "Server returned \(code)"
         }
     }
 }
@@ -67,7 +67,10 @@ struct SideKickClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else { throw SideKickError.http(status) }
+        guard (200..<300).contains(status) else {
+            let message = (try? JSONDecoder().decode([String: String].self, from: data))?["error"]
+            throw SideKickError.http(status, message)
+        }
         return try JSONDecoder().decode(T.self, from: data)
     }
 }

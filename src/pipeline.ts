@@ -1,5 +1,6 @@
 import type { BeeGateway } from "./bee/client.ts";
 import type { CardAssembler } from "./context/assembler.ts";
+import { baseCard } from "./context/assembler.ts";
 import type { Hub } from "./hub.ts";
 import type { Identifier } from "./identify/identifier.ts";
 import type { LiveSession, SessionStore } from "./ingest/sessions.ts";
@@ -57,6 +58,7 @@ export class Pipeline {
     const created = (await bee.createTodo(text)) as Record<string, unknown> | null;
     const todoId = created?.["id"] ?? (created?.["todo"] as Record<string, unknown> | undefined)?.["id"];
     store.resolveFollowUp(id, "approved", text, todoId === undefined ? undefined : String(todoId));
+    console.log(`[followup] todo created in Bee${todoId === undefined ? "" : ` (id ${todoId})`}: ${text}`);
     hub.publish({ followUp: null });
     return store.getFollowUp(id)!;
   }
@@ -68,7 +70,7 @@ export class Pipeline {
 
   private require(conversationUuid: string): LiveSession {
     const session = this.deps.sessions.get(conversationUuid);
-    if (!session) throw new Error("No live conversation with that id");
+    if (!session) throw new Error("That conversation is no longer available");
     return session;
   }
 
@@ -92,11 +94,17 @@ export class Pipeline {
     const run = (async () => {
       do {
         this.dirty.delete(uuid);
+        // Name-from-speech needs no network, so tap the wrist before the slower LLM/Bee pass.
+        const quick = await this.deps.identifier.identify(session, { semantic: false });
+        const quickName = quick.person?.name ?? quick.inferredName;
+        if (quickName && quickName !== (session.card?.person?.name ?? session.card?.inferredName)) {
+          session.card = baseCard(session, quick);
+          this.publishCard(session);
+        }
         const identification = await this.deps.identifier.identify(session);
         session.identification = identification;
         session.card = await this.deps.assembler.assemble(session, identification);
-        this.deps.hub.publish({ card: session.card });
-        this.logFirstCard(session);
+        this.publishCard(session);
       } while (this.dirty.has(uuid));
     })();
     this.running.set(uuid, run);
@@ -105,6 +113,15 @@ export class Pipeline {
     } finally {
       this.running.delete(uuid);
     }
+  }
+
+  /** Ended conversations may still be confirmed; never let them replace a newer live card. */
+  private publishCard(session: LiveSession): void {
+    const current = this.deps.hub.current().card;
+    const live = this.deps.sessions.isLive(session.conversationUuid);
+    if (!live && current && current.conversationUuid !== session.conversationUuid) return;
+    this.deps.hub.publish({ card: session.card });
+    this.logFirstCard(session);
   }
 
   private logFirstCard(session: LiveSession): void {

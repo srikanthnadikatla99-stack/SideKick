@@ -31,6 +31,20 @@ Schema: {"role": string|null, "org": string|null, "howYouMet": string|null,
 const strOrUndef = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 const strList = (v: unknown) => (Array.isArray(v) ? v.filter((s): s is string => typeof s === "string" && !!s.trim()).slice(0, 3) : []);
 
+export function baseCard(session: LiveSession, identification: Identification): Card {
+  return {
+    conversationUuid: session.conversationUuid,
+    person: identification.person,
+    inferredName: identification.inferredName,
+    confidence: identification.confidence,
+    confirmed: identification.confirmed,
+    openLoops: [],
+    dontForget: [],
+    avoid: [],
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export class CardAssembler {
   private cache = new Map<string, { at: number; context: PersonContext }>();
 
@@ -38,17 +52,7 @@ export class CardAssembler {
 
   async assemble(session: LiveSession, identification: Identification): Promise<Card> {
     const name = identification.person?.name ?? identification.inferredName;
-    const base: Card = {
-      conversationUuid: session.conversationUuid,
-      person: identification.person,
-      inferredName: identification.inferredName,
-      confidence: identification.confidence,
-      confirmed: identification.confirmed,
-      openLoops: [],
-      dontForget: [],
-      avoid: [],
-      updatedAt: new Date().toISOString(),
-    };
+    const base = baseCard(session, identification);
     if (!name) return base;
 
     let context: PersonContext;
