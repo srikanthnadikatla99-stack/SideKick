@@ -16,6 +16,8 @@ targets:
       path: SideKick/Info.plist
       properties:
         CFBundleDisplayName: SideKick
+        # Carousel looks up the home-screen icon by this top-level key.
+        CFBundleIconName: AppIcon
         WKApplication: true
         WKWatchOnly: true
         SideKickBaseURL: $(SIDEKICK_BASE_URL)
