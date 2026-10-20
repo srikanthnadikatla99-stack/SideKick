@@ -112,10 +112,14 @@ FILE="${1:?usage: sudo sidekick-replay <file.jsonl>}"
 systemctl stop sidekick
 # Earlier manual runs can outlive their terminal (or be suspended with Ctrl+Z) and keep holding
 # the port; tsx rewrites the process title, so find them by port rather than by command line.
-holders() { ss -ltnpH 'sport = :8787' | grep -oP 'pid=\K[0-9]+' | sort -u; }
-for pid in $(holders); do kill -CONT "$pid"; kill "$pid"; done
-sleep 2
-for pid in $(holders); do kill -9 "$pid"; done
+holders() { ss -ltnpH 'sport = :8787' | grep -oP 'pid=\K[0-9]+' | sort -u || true; }
+for pid in $(holders); do kill -CONT "$pid" 2>/dev/null || true; kill "$pid" 2>/dev/null || true; done
+for _ in $(seq 1 10); do [[ -z "$(holders)" ]] && break; sleep 0.5; done
+for pid in $(holders); do kill -9 "$pid" 2>/dev/null || true; done
+sleep 0.5
+if [[ -n "$(holders)" ]]; then
+  echo "Port 8787 is still in use:"; ss -ltnp 'sport = :8787'; systemctl start sidekick; exit 1
+fi
 trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
 cd /opt/sidekick/app
 sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
