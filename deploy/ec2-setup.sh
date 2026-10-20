@@ -105,8 +105,9 @@ chmod 755 /usr/bin/sidekick-update
 
 (cd /opt/sidekick/app && sudo -u sidekick -H npm ci --no-audit --no-fund)
 systemctl daemon-reload
-systemctl enable --now caddy
-systemctl enable sidekick
+systemctl enable caddy sidekick
+# Restart so a re-run picks up a changed public IP in the Caddyfile.
+systemctl restart caddy
 
 echo
 echo "Public URL: https://$HOST"

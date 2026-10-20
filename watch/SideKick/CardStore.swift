@@ -21,11 +21,19 @@ final class CardStore {
 
     func start() {
         guard let client, loop == nil else { return }
+        errorMessage = nil
         loop = Task { [weak self] in
+            // Fetch immediately on (re)open, then long-poll for changes.
+            var wait = 0
             while !Task.isCancelled {
                 do {
-                    let snapshot = try await client.state(since: self?.version ?? -1)
+                    let snapshot = try await client.state(since: self?.version ?? -1, wait: wait)
+                    wait = 25
                     self?.apply(snapshot)
+                } catch is CancellationError {
+                    return
+                } catch let error as URLError where error.code == .cancelled {
+                    return
                 } catch {
                     self?.connected = false
                     self?.errorMessage = error.localizedDescription

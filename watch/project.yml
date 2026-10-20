@@ -11,6 +11,7 @@ targets:
     type: application
     platform: watchOS
     sources: [SideKick]
+    scheme: {}
     info:
       path: SideKick/Info.plist
       properties:
