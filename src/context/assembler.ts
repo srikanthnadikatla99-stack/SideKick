@@ -38,6 +38,10 @@ export function baseCard(session: LiveSession, identification: Identification): 
     inferredName: identification.inferredName,
     confidence: identification.confidence,
     confirmed: identification.confirmed,
+    role: identification.person?.role,
+    org: identification.person?.org,
+    evidence: identification.evidence.slice(0, 2),
+    pending: true,
     openLoops: [],
     dontForget: [],
     avoid: [],
@@ -52,7 +56,7 @@ export class CardAssembler {
 
   async assemble(session: LiveSession, identification: Identification): Promise<Card> {
     const name = identification.person?.name ?? identification.inferredName;
-    const base = baseCard(session, identification);
+    const base = { ...baseCard(session, identification), pending: false };
     if (!name) return base;
 
     let context: PersonContext;
@@ -70,6 +74,8 @@ export class CardAssembler {
     return {
       ...base,
       person: person ?? identification.person,
+      role: person?.role ?? context.role,
+      org: person?.org ?? context.org,
       howYouMet: context.howYouMet,
       lastSpoke: context.lastSpoke,
       openLoops: context.openLoops,

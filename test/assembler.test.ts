@@ -22,4 +22,5 @@ test("card still shows the recognized name when the LLM is unavailable", async (
   assert.equal(card.inferredName, "Sarah Chen");
   assert.equal(card.confidence, 0.6);
   assert.deepEqual(card.openLoops, []);
+  assert.equal(card.pending, false);
 });

@@ -9,13 +9,27 @@ final class CardStore {
     private(set) var followUp: FollowUp?
     private(set) var connected = false
     private(set) var errorMessage: String?
+    private(set) var busy = false
+    private(set) var toast: String?
 
     private let client: SideKickClient?
     private var version = -1
     private var loop: Task<Void, Never>?
+    private let isDemo: Bool
 
-    init(client: SideKickClient? = SideKickClient()) {
+    init(client: SideKickClient? = SideKickClient(), arguments: [String] = ProcessInfo.processInfo.arguments) {
+        if let index = arguments.firstIndex(of: "-SideKickDemo") {
+            let variant = arguments.indices.contains(index + 1) ? arguments[index + 1] : "card"
+            self.client = nil
+            self.isDemo = true
+            let snapshot = DemoData.snapshot(variant)
+            card = snapshot.card
+            followUp = snapshot.followUp
+            connected = true
+            return
+        }
         self.client = client
+        self.isDemo = false
         if client == nil { errorMessage = SideKickError.notConfigured.localizedDescription }
     }
 
@@ -50,20 +64,26 @@ final class CardStore {
 
     func confirm() async {
         guard let client, let card, let name = card.displayName else { return }
-        await perform { try await client.confirm(conversationUuid: card.conversationUuid, personId: card.person?.id, name: card.person == nil ? name : nil) }
+        await perform(success: "Saved \(name)") {
+            try await client.confirm(conversationUuid: card.conversationUuid, personId: card.person?.id, name: card.person == nil ? name : nil)
+        }
     }
 
     func reject() async {
         guard let client, let card, let name = card.displayName else { return }
-        await perform { try await client.reject(conversationUuid: card.conversationUuid, name: name) }
+        await perform(success: nil) { try await client.reject(conversationUuid: card.conversationUuid, name: name) }
     }
 
     func approveFollowUp() async {
-        guard let client, let followUp else { return }
+        guard let client, let followUp, !busy else { return }
+        busy = true
+        defer { busy = false }
         do {
             try await client.approveFollowUp(id: followUp.id)
             self.followUp = nil
+            errorMessage = nil
             WKInterfaceDevice.current().play(.success)
+            showToast("Added to Bee")
         } catch {
             errorMessage = error.localizedDescription
             WKInterfaceDevice.current().play(.failure)
@@ -72,15 +92,30 @@ final class CardStore {
 
     func dismissFollowUp() async {
         guard let client, let followUp else { return }
-        await perform { try await client.dismissFollowUp(id: followUp.id) }
+        await perform(success: nil) { try await client.dismissFollowUp(id: followUp.id) }
     }
 
-    private func perform(_ action: () async throws -> Snapshot) async {
+    private func perform(success: String?, _ action: () async throws -> Snapshot) async {
+        guard !busy, !isDemo else { return }
+        busy = true
+        defer { busy = false }
         do {
             apply(try await action())
+            if let success {
+                WKInterfaceDevice.current().play(.success)
+                showToast(success)
+            }
         } catch {
             errorMessage = error.localizedDescription
             WKInterfaceDevice.current().play(.failure)
+        }
+    }
+
+    private func showToast(_ text: String) {
+        toast = text
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2.5))
+            if self?.toast == text { self?.toast = nil }
         }
     }
 

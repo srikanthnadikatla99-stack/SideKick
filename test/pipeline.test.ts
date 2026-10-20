@@ -83,9 +83,12 @@ test("a name-only card is published before the slow LLM pass finishes", async ()
   await new Promise((r) => setTimeout(r, 50));
   assert.equal(hub.current().card?.inferredName, "Sarah Chen");
   assert.equal(hub.current().card?.howYouMet, undefined);
+  assert.equal(hub.current().card?.pending, true);
   release();
   await new Promise((r) => setTimeout(r, 50));
   assert.equal(hub.current().card?.howYouMet, "Lisbon conference");
+  assert.equal(hub.current().card?.role, "Head of Design");
+  assert.equal(hub.current().card?.pending, false);
 });
 
 test("API requires the bearer token and serves long-poll state", async (t) => {

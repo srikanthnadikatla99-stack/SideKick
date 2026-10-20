@@ -8,48 +8,134 @@ struct CardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 header
-                if let howYouMet = card.howYouMet ?? card.person?.howYouMet {
-                    Label(howYouMet, systemImage: "person.2").font(.footnote)
-                }
-                if let last = card.lastSpoke {
-                    Label("\(last.when) · \(last.topic)", systemImage: "clock").font(.footnote)
+                if card.pending == true {
+                    HStack(spacing: 6) {
+                        ProgressView().frame(width: 16, height: 16)
+                        Text("Checking your history…").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
                 ForEach(card.openLoops, id: \.self) { loop in
-                    Label(loop.text, systemImage: loop.direction == .youOwe ? "exclamationmark.triangle.fill" : "arrow.uturn.left")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(loop.direction == .youOwe ? .orange : .cyan)
+                    OpenLoopTile(loop: loop)
                 }
-                ForEach(card.dontForget, id: \.self) { Label($0, systemImage: "lightbulb").font(.footnote) }
-                ForEach(card.avoid, id: \.self) { Label($0, systemImage: "hand.raised").font(.footnote).foregroundStyle(.secondary) }
-                if !card.confirmed { confirmButtons }
+                if let last = card.lastSpoke {
+                    Tile {
+                        VStack(alignment: .leading, spacing: 2) {
+                            SectionLabel(text: "Last time · \(last.when)", systemImage: "clock.fill")
+                            Text(last.topic).font(.footnote)
+                        }
+                    }
+                }
+                if let met = card.howYouMet ?? card.person?.howYouMet {
+                    Tile {
+                        VStack(alignment: .leading, spacing: 2) {
+                            SectionLabel(text: "How you met", systemImage: "person.2.fill")
+                            Text(met).font(.footnote)
+                        }
+                    }
+                }
+                ForEach(card.dontForget, id: \.self) { item in
+                    Tile(accent: Theme.honey) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            SectionLabel(text: "Bring up", systemImage: "lightbulb.fill", color: Theme.honey)
+                            Text(item).font(.footnote)
+                        }
+                    }
+                }
+                ForEach(card.avoid, id: \.self) { item in
+                    Tile(accent: .gray) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            SectionLabel(text: "Avoid", systemImage: "hand.raised.fill")
+                            Text(item).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                if !card.confirmed, card.displayName != nil { confirmSection }
                 if let error = store.errorMessage {
-                    Text(error).font(.caption2).foregroundStyle(.red)
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
                 }
             }
+            .padding(.horizontal, 2)
         }
+        .containerBackground(Theme.pageBackground, for: .tabView)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(card.displayName ?? "Listening…")
-                .font(.title3.bold())
-                .minimumScaleFactor(0.6)
-                .lineLimit(2)
-            let subtitle = [card.person?.role, card.person?.org].compactMap { $0 }.joined(separator: " · ")
-            if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
-            Text(card.confirmed ? "Confirmed" : "\(Int(card.confidence * 100))% sure")
-                .font(.caption2)
-                .foregroundStyle(card.confirmed ? .green : .secondary)
+        HStack(alignment: .top, spacing: 8) {
+            Text(card.initials)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 36, height: 36)
+                .background(LinearGradient(colors: [Theme.honey, Theme.amber], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(card.displayName ?? "Listening…")
+                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                if let role = card.role ?? card.person?.role {
+                    Text(role).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                if let org = card.org ?? card.person?.org {
+                    Text(org).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                statusChip
+            }
         }
+        .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder private var confirmButtons: some View {
-        if card.displayName != nil {
-            HStack {
-                Button("Yes") { Task { await store.confirm() } }.tint(.green)
-                Button("No") { Task { await store.reject() } }.tint(.red)
+    private var statusChip: some View {
+        Group {
+            if card.confirmed {
+                Label("Confirmed", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+            } else {
+                Label("\(Int(card.confidence * 100))% match", systemImage: "waveform").foregroundStyle(Theme.honey)
+            }
+        }
+        .font(.system(size: 11, weight: .semibold))
+    }
+
+    private var confirmSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Is this \(card.displayName ?? "them")?").font(.footnote.weight(.semibold))
+            if let why = card.evidence?.first {
+                Text(why).font(.caption2).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 8) {
+                Button { Task { await store.confirm() } } label: {
+                    Image(systemName: "checkmark").font(.body.weight(.bold))
+                }
+                .tint(.green)
+                .accessibilityLabel("Yes, it's \(card.displayName ?? "them")")
+                Button { Task { await store.reject() } } label: {
+                    Image(systemName: "xmark").font(.body.weight(.bold))
+                }
+                .tint(.red)
+                .accessibilityLabel("No, not them")
             }
             .buttonStyle(.borderedProminent)
+            .disabled(store.busy)
+        }
+        .padding(.top, 4)
+    }
+}
+
+struct OpenLoopTile: View {
+    let loop: OpenLoop
+
+    var body: some View {
+        let youOwe = loop.direction == .youOwe
+        let color = youOwe ? Theme.youOwe : Theme.theyOwe
+        Tile(accent: color) {
+            VStack(alignment: .leading, spacing: 2) {
+                SectionLabel(
+                    text: youOwe ? "You owe" : "They owe",
+                    systemImage: youOwe ? "exclamationmark.triangle.fill" : "arrow.uturn.backward.circle.fill",
+                    color: color)
+                Text(loop.text).font(.footnote.weight(.medium))
+            }
         }
     }
 }
@@ -61,49 +147,124 @@ struct FollowUpView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Follow-up").font(.caption).foregroundStyle(.secondary)
-                Text(followUp.text).font(.body)
-                Button("Add to Bee") { Task { await store.approveFollowUp() } }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.yellow)
-                Button("Dismiss", role: .cancel) { Task { await store.dismissFollowUp() } }
-                if let error = store.errorMessage {
-                    Text(error).font(.caption2).foregroundStyle(.red)
+                SectionLabel(text: "Follow-up", systemImage: "checklist", color: Theme.honey)
+                Tile {
+                    Text(followUp.text).font(.footnote)
                 }
+                Button { Task { await store.approveFollowUp() } } label: {
+                    if store.busy {
+                        ProgressView().tint(Theme.ink)
+                    } else {
+                        Label("Add to Bee", systemImage: "plus.circle.fill").font(.body.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.honey)
+                .foregroundStyle(Theme.ink)
+                .disabled(store.busy)
+                Button("Not now") { Task { await store.dismissFollowUp() } }
+                    .font(.footnote)
+                    .disabled(store.busy)
+                if let error = store.errorMessage {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+        .containerBackground(Theme.pageBackground, for: .tabView)
+    }
+}
+
+struct IdleView: View {
+    let store: CardStore
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                ForEach(0..<2) { ring in
+                    Circle()
+                        .stroke(Theme.honey.opacity(0.35), lineWidth: 2)
+                        .scaleEffect(pulse ? 1.6 + Double(ring) * 0.3 : 0.9)
+                        .opacity(pulse ? 0 : 0.8)
+                }
+                Image(systemName: "person.wave.2.fill")
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 56, height: 56)
+                    .background(LinearGradient(colors: [Theme.honey, Theme.amber], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+            }
+            .frame(width: 70, height: 70)
+            .onAppear {
+                withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) { pulse = true }
+            }
+            Text("SideKick").font(.system(.title3, design: .rounded).weight(.bold))
+            status
+        }
+        .containerBackground(Theme.pageBackground, for: .tabView)
+    }
+
+    @ViewBuilder private var status: some View {
+        if let error = store.errorMessage {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption2)
+                .foregroundStyle(.red)
+                .multilineTextAlignment(.center)
+        } else if store.connected {
+            HStack(spacing: 5) {
+                Circle().fill(.green).frame(width: 6, height: 6)
+                Text("Listening for conversations").font(.caption2).foregroundStyle(.secondary)
+            }
+        } else {
+            HStack(spacing: 6) {
+                ProgressView().frame(width: 14, height: 14)
+                Text("Connecting…").font(.caption2).foregroundStyle(.secondary)
             }
         }
     }
 }
 
 struct ContentView: View {
+    private enum Page: Hashable { case card, followUp }
+
     @State private var store = CardStore()
+    @State private var page: Page = .card
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView {
-            if let card = store.card {
-                CardView(card: card, store: store)
-            } else {
-                idle
+        TabView(selection: $page) {
+            Group {
+                if let card = store.card {
+                    CardView(card: card, store: store)
+                } else {
+                    IdleView(store: store)
+                }
             }
+            .tag(Page.card)
             if let followUp = store.followUp {
-                FollowUpView(followUp: followUp, store: store)
+                FollowUpView(followUp: followUp, store: store).tag(Page.followUp)
             }
         }
         .tabViewStyle(.verticalPage)
+        // Jump to whatever just arrived: a new person, or the post-conversation follow-up.
+        .onChange(of: store.followUp?.id, initial: true) { _, id in page = id == nil ? .card : .followUp }
+        .onChange(of: store.card?.displayName) { _, _ in if store.followUp == nil { page = .card } }
+        .overlay(alignment: .bottom) {
+            if let toast = store.toast {
+                Label(toast, systemImage: "checkmark.circle.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.honey, in: Capsule())
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: store.toast)
+        .animation(.default, value: store.card)
         .onChange(of: scenePhase, initial: true) { _, phase in
             phase == .background ? store.stop() : store.start()
-        }
-    }
-
-    private var idle: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "waveform").font(.title2).foregroundStyle(.yellow)
-            Text("SideKick").font(.headline)
-            Text(store.errorMessage ?? (store.connected ? "Listening for conversations" : "Connecting…"))
-                .font(.caption2)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
         }
     }
 }
@@ -111,6 +272,8 @@ struct ContentView: View {
 @main
 struct SideKickApp: App {
     var body: some Scene {
-        WindowGroup { ContentView() }
+        WindowGroup {
+            ContentView().tint(Theme.honey)
+        }
     }
 }

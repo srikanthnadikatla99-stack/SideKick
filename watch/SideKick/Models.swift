@@ -25,6 +25,11 @@ struct Card: Codable, Equatable {
     let inferredName: String?
     let confidence: Double
     let confirmed: Bool
+    // Optional so the watch still decodes cards from an older server.
+    let role: String?
+    let org: String?
+    let evidence: [String]?
+    let pending: Bool?
     let howYouMet: String?
     let lastSpoke: LastSpoke?
     let openLoops: [OpenLoop]
@@ -32,6 +37,10 @@ struct Card: Codable, Equatable {
     let avoid: [String]
 
     var displayName: String? { person?.name ?? inferredName }
+    var initials: String {
+        let words = (displayName ?? "?").split(separator: " ").prefix(2)
+        return words.compactMap { $0.first.map(String.init) }.joined().uppercased()
+    }
 }
 
 struct FollowUp: Codable, Equatable {

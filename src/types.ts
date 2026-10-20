@@ -27,6 +27,12 @@ export type Card = {
   inferredName?: string;
   confidence: number;
   confirmed: boolean;
+  role?: string;
+  org?: string;
+  /** Why SideKick thinks it's this person, shown next to the confirm buttons. */
+  evidence: string[];
+  /** True while history/open loops are still being fetched. */
+  pending: boolean;
   howYouMet?: string;
   lastSpoke?: { when: string; topic: string };
   openLoops: OpenLoop[];

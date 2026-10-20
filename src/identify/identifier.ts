@@ -60,7 +60,7 @@ export class Identifier {
       add(
         m.name,
         m.kind === "self" ? 0.6 : 0.45,
-        m.kind === "self" ? `${m.speaker} introduced themselves as ${m.name}` : `${m.speaker} addressed ${m.name}`,
+        m.kind === "self" ? `Introduced themselves as ${m.name}` : `Was greeted as ${m.name}`,
       );
     }
 
