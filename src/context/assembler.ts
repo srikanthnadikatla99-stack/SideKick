@@ -51,7 +51,14 @@ export class CardAssembler {
     };
     if (!name) return base;
 
-    const context = await this.personContext(name, session.conversationId);
+    let context: PersonContext;
+    try {
+      context = await this.personContext(name, session.conversationId);
+    } catch (error) {
+      // A name on the wrist beats no card when the LLM or Bee lookups are unavailable.
+      console.warn("[card] context unavailable, showing name only:", (error as Error).message);
+      return base;
+    }
     if (identification.person) {
       this.deps.store.upsertPerson({ name: identification.person.name, role: context.role, org: context.org, howYouMet: context.howYouMet });
     }
