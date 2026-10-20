@@ -104,6 +104,18 @@ systemctl --no-pager status sidekick | head -5
 EOF
 chmod 755 /usr/bin/sidekick-update
 
+cat > /usr/bin/sidekick-replay <<'EOF'
+#!/bin/bash
+# Usage: sudo sidekick-replay <file.jsonl>  (pauses the live service; Ctrl+C resumes it)
+set -euo pipefail
+FILE="${1:?usage: sudo sidekick-replay <file.jsonl>}"
+systemctl stop sidekick
+trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
+cd /opt/sidekick/app
+sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
+EOF
+chmod 755 /usr/bin/sidekick-replay
+
 (cd /opt/sidekick/app && sudo -u sidekick -H npm ci --no-audit --no-fund)
 systemctl daemon-reload
 systemctl enable caddy sidekick
