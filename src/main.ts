@@ -52,6 +52,9 @@ async function main() {
   const shutdown = () => {
     abort.abort();
     server.close();
+    // The watch's long-poll keeps connections open, so close() alone never finishes.
+    server.closeAllConnections();
+    setTimeout(() => process.exit(0), 2000).unref();
   };
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
