@@ -6,6 +6,8 @@ set -euo pipefail
 NODE_VERSION=24.3.0
 CADDY_VERSION=2.8.4
 MODEL_ID="${BEDROCK_MODEL_ID:-us.amazon.nova-pro-v1:0}"
+# Bedrock model access and the us.* inference profile live in this region, not necessarily the VM's.
+BEDROCK_REGION="${BEDROCK_REGION:-us-east-1}"
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_URL="$(git -C "$SRC" remote get-url origin)"
 
@@ -21,7 +23,6 @@ imds() {
   curl -sf -H "X-aws-ec2-metadata-token: $token" "http://169.254.169.254/latest/meta-data/$1"
 }
 PUBLIC_IP=$(imds public-ipv4)
-REGION=$(imds placement/region)
 HOST="${PUBLIC_IP//./-}.sslip.io"
 
 dnf install -y tar gzip xz openssl git
@@ -48,7 +49,7 @@ SIDEKICK_HOST=127.0.0.1
 SIDEKICK_PORT=8787
 SIDEKICK_TOKEN=$(openssl rand -hex 32)
 SIDEKICK_DB=/var/lib/sidekick/sidekick.db
-AWS_REGION=$REGION
+AWS_REGION=$BEDROCK_REGION
 BEDROCK_MODEL_ID=$MODEL_ID
 EOF
   chown root:sidekick /etc/sidekick.env
