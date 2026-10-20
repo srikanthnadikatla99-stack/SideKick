@@ -1,0 +1,5 @@
+{"t":0,"type":"new-conversation","data":{"conversation":{"id":501,"uuid":"conv-a","state":"processing","title":null}}}
+{"t":400,"type":"new-utterance","data":{"utterance":{"text":"Hi, I'm Sarah Chen, we met in Lisbon.","speaker":"speaker_2"},"conversation_uuid":"conv-a"}}
+{"t":900,"type":"new-utterance","data":{"utterance":{"text":"Of course! How is the design hiring going at Northwind?","speaker":"speaker_1"},"conversation_uuid":"conv-a"}}
+{"t":1500,"type":"new-utterance","data":{"utterance":{"text":"Hiring is slow, still waiting on that onboarding doc from you.","speaker":"speaker_2"},"conversation_uuid":"conv-a"}}
+{"t":2000,"type":"update-conversation","data":{"conversation":{"id":501,"state":"processed","title":"Catch-up with Sarah","short_summary":"Sarah asked about the onboarding doc."}}}

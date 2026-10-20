@@ -2,7 +2,7 @@ node_modules/
 .env
 data/
 # Recorded Bee events contain real conversations.
-fixtures/
+/fixtures/
 *.db
 *.db-journal
 .DS_Store
