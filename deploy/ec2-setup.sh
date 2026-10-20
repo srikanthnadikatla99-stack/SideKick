@@ -110,10 +110,12 @@ cat > /usr/bin/sidekick-replay <<'EOF'
 set -euo pipefail
 FILE="${1:?usage: sudo sidekick-replay <file.jsonl>}"
 systemctl stop sidekick
-# Earlier manual runs can outlive their terminal and keep holding the port; tsx rewrites the
-# process title, so find them by port rather than by command line.
-for pid in $(ss -ltnpH 'sport = :8787' | grep -oP 'pid=\K[0-9]+' | sort -u); do kill "$pid"; done
-sleep 1
+# Earlier manual runs can outlive their terminal (or be suspended with Ctrl+Z) and keep holding
+# the port; tsx rewrites the process title, so find them by port rather than by command line.
+holders() { ss -ltnpH 'sport = :8787' | grep -oP 'pid=\K[0-9]+' | sort -u; }
+for pid in $(holders); do kill -CONT "$pid"; kill "$pid"; done
+sleep 2
+for pid in $(holders); do kill -9 "$pid"; done
 trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
 cd /opt/sidekick/app
 sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
