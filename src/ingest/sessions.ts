@@ -41,7 +41,11 @@ export class SessionStore {
       }
       case "utterance": {
         const session = this.ensure(event.conversationUuid);
-        session.utterances.push(event.utterance);
+        // Bee can deliver utterances out of order; keep the transcript in spoken order.
+        const key = (u: Utterance) => u.offset ?? u.at / 1000;
+        const index = session.utterances.findIndex((u) => key(u) > key(event.utterance));
+        if (index === -1) session.utterances.push(event.utterance);
+        else session.utterances.splice(index, 0, event.utterance);
         return session;
       }
       case "conversation-processed": {

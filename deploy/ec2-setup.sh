@@ -190,7 +190,9 @@ if [[ -n "$(holders)" ]]; then
 fi
 trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
 cd /opt/sidekick/app
-sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
+# Replays use a throwaway memory so test people never leak into the live one.
+rm -f /var/lib/sidekick/replay.db*
+sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_DB=/var/lib/sidekick/replay.db SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
 EOF
 chmod 755 /usr/bin/sidekick-replay
 

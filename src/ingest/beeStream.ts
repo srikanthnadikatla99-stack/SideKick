@@ -15,6 +15,16 @@ const rec = (v: unknown): Rec => (v && typeof v === "object" ? (v as Rec) : {});
 const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : undefined);
 const num = (v: unknown) => (typeof v === "number" ? v : undefined);
 
+/** Bee sends `spoken_at` as an ISO string; accept epoch numbers too. */
+function epochMs(v: unknown): number | undefined {
+  if (typeof v === "string") {
+    const ms = Date.parse(v);
+    return Number.isNaN(ms) ? undefined : ms;
+  }
+  if (typeof v === "number") return v > 1e12 ? v : v > 1e9 ? v * 1000 : undefined;
+  return undefined;
+}
+
 export function normalizeEvent(type: StreamType, data: unknown, now = Date.now()): BeeEvent | null {
   const d = rec(data);
   if (type === "new-utterance") {
@@ -28,7 +38,8 @@ export function normalizeEvent(type: StreamType, data: unknown, now = Date.now()
       utterance: {
         speaker: str(u["speaker"]) ?? "unknown",
         text,
-        at: num(u["spoken_at"]) ?? num(u["start"]) ?? now,
+        at: epochMs(u["spoken_at"]) ?? now,
+        offset: num(u["start"]),
       },
     };
   }

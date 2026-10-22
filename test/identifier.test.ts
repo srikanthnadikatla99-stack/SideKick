@@ -52,3 +52,35 @@ test("rejecting a candidate removes it for that conversation", async () => {
   id.reject(s, "Sarah");
   assert.equal((await id.identify(s)).inferredName, undefined);
 });
+
+test("ASR spelling variants of one name merge into a single, stronger candidate", async () => {
+  const store = new Store(":memory:");
+  const id = new Identifier({ store, bee: fakeBee().bee, llm: fakeLlm({ semanticName: "Ria" }).llm, ownerNames: ["Srikanth"] });
+  const result = await id.identify(
+    session("c5", [
+      ["unknown", "Hi Riya, how are you?"],
+      ["unknown", "Great talking to you, Ria."],
+    ]),
+  );
+  assert.match(result.inferredName ?? "", /^Ri(y)?a$/);
+  assert.ok(result.confidence > 0.6, `merged confidence ${result.confidence}`);
+});
+
+test("a single shared topic word is too weak to name someone", async () => {
+  const store = new Store(":memory:");
+  const id = new Identifier({ store, bee: fakeBee().bee, llm: fakeLlm().llm, ownerNames: [] });
+  id.confirm(session("old", [["speaker_2", "Hi, I'm Sarah Chen. Northwind onboarding is my focus"]]), { name: "Sarah Chen" });
+  const result = await id.identify(session("new", [["unknown", "Good to finally catch up about Northwind."]]));
+  assert.equal(result.person, null);
+  assert.equal(result.inferredName, undefined);
+});
+
+test("stored people are found despite spelling variants", () => {
+  const store = new Store(":memory:");
+  store.upsertPerson({ name: "Riya" });
+  assert.equal(store.findPersonByName("Ria")?.name, "Riya");
+  assert.equal(store.findPersonByName("Rhea")?.name, "Riya");
+  assert.equal(store.findPersonByName("Rahul"), undefined);
+  assert.ok(store.deletePerson("Riya"));
+  assert.equal(store.listPeople().length, 0);
+});

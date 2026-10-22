@@ -54,6 +54,8 @@ export type Utterance = {
   speaker: string;
   text: string;
   at: number;
+  /** Seconds from the start of the conversation, when Bee provides it. */
+  offset?: number;
 };
 
 /** Normalized Bee stream event. */

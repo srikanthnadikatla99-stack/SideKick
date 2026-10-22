@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import type { FollowUp, Person } from "../types.ts";
+import { sameName } from "../identify/nameFromSpeech.ts";
 
 type PersonRow = { id: string; name: string; role: string | null; org: string | null; how_met: string | null };
 type FollowUpRow = {
@@ -46,6 +47,7 @@ export class Store {
     this.db = new DatabaseSync(path);
     this.db.exec(`
       PRAGMA journal_mode = WAL;
+      PRAGMA foreign_keys = ON;
       CREATE TABLE IF NOT EXISTS people (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -96,7 +98,25 @@ export class Store {
     const rows = this.db
       .prepare("SELECT * FROM people WHERE name_key = ? OR name_key LIKE ?")
       .all(first, `${first} %`) as PersonRow[];
-    return rows.length === 1 ? toPerson(rows[0]!) : undefined;
+    if (rows.length === 1) return toPerson(rows[0]!);
+    if (rows.length > 1) return undefined;
+    const similar = (this.db.prepare("SELECT * FROM people").all() as PersonRow[]).filter((r) => sameName(r.name, name));
+    return similar.length === 1 ? toPerson(similar[0]!) : undefined;
+  }
+
+  /** Removes a person with their learned cues and conversation links. */
+  deletePerson(name: string): boolean {
+    const person = this.findPersonByName(name);
+    if (!person) return false;
+    this.db.prepare("DELETE FROM people WHERE id = ?").run(person.id);
+    return true;
+  }
+
+  renamePerson(name: string, newName: string): boolean {
+    const person = this.findPersonByName(name);
+    if (!person) return false;
+    this.db.prepare("UPDATE people SET name = ?, name_key = ? WHERE id = ?").run(newName.trim(), nameKey(newName), person.id);
+    return true;
   }
 
   upsertPerson(input: Omit<Person, "id">): Person {

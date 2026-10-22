@@ -24,6 +24,8 @@ export type PipelineDeps = {
 };
 
 const DEBOUNCE_MS = 1200;
+/** A wrist tap is interruptive, so only send one when fairly sure (or once confirmed). */
+const NOTIFY_MIN_CONFIDENCE = 0.5;
 
 /** Ingestion → identification → card → follow-up, per live conversation. */
 export class Pipeline {
@@ -140,6 +142,7 @@ export class Pipeline {
     const card = session.card;
     const name = card?.person?.name ?? card?.inferredName;
     if (!card || !name || card.pending || !this.deps.sessions.isLive(session.conversationUuid)) return;
+    if (!card.confirmed && card.confidence < NOTIFY_MIN_CONFIDENCE) return;
     const key = `${session.conversationUuid}:${name.toLowerCase()}`;
     if (this.notified.has(key)) return;
     this.notified.add(key);

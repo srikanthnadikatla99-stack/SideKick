@@ -13,6 +13,7 @@
     "start": "tsx src/main.ts",
     "replay": "SIDEKICK_SOURCE=replay tsx src/main.ts",
     "record": "tsx src/scripts/record.ts",
+    "people": "tsx src/scripts/people.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/*.test.ts"
   },

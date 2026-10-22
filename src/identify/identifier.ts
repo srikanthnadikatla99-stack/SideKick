@@ -5,7 +5,7 @@ import { transcriptText } from "../ingest/sessions.ts";
 import type { LlmProvider } from "../llm/provider.ts";
 import type { Store } from "../store/db.ts";
 import type { Identification, Person } from "../types.ts";
-import { extractNameMentions, topicKeywords } from "./nameFromSpeech.ts";
+import { extractNameMentions, sameName, topicKeywords } from "./nameFromSpeech.ts";
 
 export type IdentifierDeps = {
   store: Store;
@@ -16,7 +16,11 @@ export type IdentifierDeps = {
 };
 
 type SemanticGuess = { name: string | null; confidence: number; evidence: string };
-type Candidate = { name: string; score: number; evidence: string[] };
+type Candidate = { name: string; score: number; evidence: string[]; spellings: Map<string, number> };
+
+/** Below this, a guess is noise (e.g. one shared topic word) and is not shown at all. */
+export const MIN_CARD_CONFIDENCE = 0.3;
+const MAX_EVIDENCE_CHARS = 90;
 
 const SEMANTIC_EVERY_N_UTTERANCES = 3;
 const SKIP_SEMANTIC_ABOVE = 0.85;
@@ -26,6 +30,7 @@ You get: the live transcript (speaker labels are per-conversation, not names), B
 over the wearer's past conversations, Bee facts about the wearer's life, and people already known.
 Pick the single most likely person the wearer is speaking with, or null if the evidence is weak.
 Never return the wearer themselves. Confidence is 0..1 and must reflect real evidence, not guesses.
+evidence is one short phrase under 12 words, e.g. "Discussed Northwind and the marathon, like last time".
 Schema: {"name": string|null, "confidence": number, "evidence": string}`;
 
 const key = (name: string) => name.trim().toLowerCase();
@@ -48,12 +53,15 @@ export class Identifier {
     const candidates = new Map<string, Candidate>();
     // Noisy-OR: independent signals reinforce each other without exceeding 1.
     const add = (name: string, score: number, evidence: string) => {
-      if (score <= 0 || rejected.has(key(name))) return;
+      if (score <= 0 || [...rejected].some((r) => sameName(r, name))) return;
       const resolved = store.findPersonByName(name)?.name ?? name;
-      const c = candidates.get(key(resolved)) ?? { name: resolved, score: 0, evidence: [] };
+      const existing = [...candidates.values()].find((c) => sameName(c.name, resolved));
+      const c: Candidate = existing ?? { name: resolved, score: 0, evidence: [], spellings: new Map() };
       c.score = 1 - (1 - c.score) * (1 - Math.min(score, 0.95));
-      c.evidence.push(evidence);
-      candidates.set(key(resolved), c);
+      c.evidence.push(evidence.length > MAX_EVIDENCE_CHARS ? `${evidence.slice(0, MAX_EVIDENCE_CHARS - 1)}…` : evidence);
+      c.spellings.set(resolved, (c.spellings.get(resolved) ?? 0) + score);
+      c.name = [...c.spellings.entries()].sort((a, b) => b[1] - a[1])[0]![0];
+      if (!existing) candidates.set(key(resolved), c);
     };
 
     for (const m of extractNameMentions(session.utterances, this.deps.ownerNames)) {
@@ -83,7 +91,7 @@ export class Identifier {
     if (guess?.name) add(guess.name, guess.confidence * 0.7, guess.evidence);
 
     const best = [...candidates.values()].sort((a, b) => b.score - a.score)[0];
-    if (!best) return { person: null, confidence: 0, confirmed: false, evidence: [] };
+    if (!best || best.score < MIN_CARD_CONFIDENCE) return { person: null, confidence: 0, confirmed: false, evidence: [] };
     const person = store.findPersonByName(best.name) ?? null;
     return {
       person,

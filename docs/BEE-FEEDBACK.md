@@ -28,22 +28,22 @@ tool and updated as we build. Feeds the submission requirements in
 
 ### Friction log
 
-#### F-01 · `bee stream --json` drops the event name — **Medium**
+#### F-01 · `bee stream --json` event type is undocumented and inconsistent — **Low** (revised after live testing)
 - **Task attempted:** Get `new-conversation`, `new-utterance` and `update-conversation` events from
   one stream and handle each event type differently.
 - **Steps taken:**
   1. Ran `bee stream --help`; it shows `--types` and `--json`.
   2. Read how the CLI formats events. In JSON mode it prints only `event.data` (the raw payload).
   3. Read the library's `createJsonSseStream`, which skips the SSE `event:` lines.
-- **Expected:** Each JSON line says which event it is, e.g. `{"event":"new-utterance","data":{…}}`.
-- **Actual:** Only the payload comes through, so the event type has to be guessed from the
-  payload's fields. `new-conversation` and `update-conversation` payloads look the same
-  (both contain a `conversation` object).
+  4. Recorded a live session: real `new-utterance` payloads *do* include `"type": "new-utterance"`,
+     but keep-alive lines (`{"timestamp": …}`) on the same stream carry no type at all.
+- **Expected:** Each JSON line says which event it is, documented for every event type.
+- **Actual:** The type field appears in some payloads but not others, and none of this is documented,
+  so we couldn't rely on it before seeing live data.
 - **Workaround:** Open one filtered stream per event type (`--types <one>`) and label each event
-  with the type of the stream it came from. This costs three subprocesses and three connections,
-  and there's no ordering guarantee across streams.
-- **Suggestion:** In `--json` mode, print `{"event": "...", "data": {...}}`, or add a field such as
-  `--json-envelope`. Also add `event` to the library's `JsonSseEvent`.
+  with the type of the stream it came from; ignore payloads without a conversation id.
+- **Suggestion:** Document the payload schema per event (including keep-alives), and add `event` to the
+  library's `JsonSseEvent`.
 
 #### F-05 · Bee iOS app not findable in a non-US App Store — **Blocker**
 - **Task attempted:** Install the Bee iOS app (prerequisite for Developer Mode, Apple Watch capture,
@@ -130,9 +130,35 @@ tool and updated as we build. Feeds the submission requirements in
 ### Product feedback
 - **Used for:** The core trigger. Each `new-utterance` runs person identification and refreshes
   the card. `update-conversation` with state `processed` triggers the follow-up todo.
-- **Worked well:** Server-side `--types` filtering keeps traffic down.
-- **Needs work:** Event name missing from JSON output (F-01). _Latency observations to add after
-  live testing._
+- **Worked well:** Server-side `--types` filtering keeps traffic down. Utterances arrived within a few
+  seconds of being spoken, fast enough for an in-conversation card.
+- **Needs work:** see F-01, F-07, F-08.
+
+### Friction log
+
+#### F-07 · Live utterances arrive out of order, with undocumented time fields — **Medium**
+- **Task attempted:** Detect a greeting ("Hi Riya, how are you?") at the very start of a conversation.
+- **Steps taken:** Recorded the live stream during a real conversation and compared it with Bee's
+  final transcript.
+- **Expected:** Utterances in spoken order, with a documented timestamp format.
+- **Actual:** "Hi Riya" (`start: 1.68`) arrived *after* utterances at `start: 3.76` and `6.64`.
+  `spoken_at` is an ISO string while `start`/`end` are seconds from conversation start; neither is
+  documented. Our first look at the conversation therefore had no name in it.
+- **Workaround:** Re-sort each conversation's utterances by `start` on arrival; parse `spoken_at` as ISO.
+- **Suggestion:** Document the utterance schema and ordering guarantees; either deliver in order or
+  include a sequence number.
+
+#### F-08 · No speaker labels in the live stream from Apple Watch — **Medium**
+- **Task attempted:** Tell the wearer's words apart from the other person's.
+- **Steps taken:** Inspected live `new-utterance` payloads and the processed transcript.
+- **Expected:** `speaker_1` / `speaker_2` labels, as described in the docs.
+- **Actual:** Live utterances have no `speaker` field, and the processed transcript says
+  "Speaker attribution was not available; all speakers are listed as Unknown". The ASR also spelled
+  the same name two ways in one conversation ("Riya" and "Ria").
+- **Workaround:** Identify people from what is said (greetings, introductions, topics) rather than who
+  says it; treat near-identical name spellings as one person.
+- **Suggestion:** Expose speaker diarization for Apple Watch captures (or document when it's
+  unavailable), and consider a per-user vocabulary so recurring names are spelled consistently.
 
 ---
 

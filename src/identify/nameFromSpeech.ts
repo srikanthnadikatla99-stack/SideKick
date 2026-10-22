@@ -50,6 +50,38 @@ export function extractNameMentions(utterances: Utterance[], ownerNames: string[
   return mentions;
 }
 
+function phonetic(word: string): string {
+  return word
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/h/g, "")
+    .replace(/y/g, "i")
+    .replace(/(.)\1+/g, "$1");
+}
+
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]!;
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const temp = row[j]!;
+      row[j] = Math.min(row[j]! + 1, row[j - 1]! + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = temp;
+    }
+  }
+  return row[b.length]!;
+}
+
+/** ASR spells the same name differently ("Riya", "Ria", "Rhea"); compare first names loosely. */
+export function sameName(a: string, b: string): boolean {
+  const [fa, fb] = [a.trim().split(/\s+/)[0]!, b.trim().split(/\s+/)[0]!];
+  if (fa.toLowerCase() === fb.toLowerCase()) return true;
+  if (fa[0]?.toLowerCase() !== fb[0]?.toLowerCase() || fa.length < 3 || fb.length < 3) return false;
+  return editDistance(phonetic(fa), phonetic(fb)) <= 1;
+}
+
 const STOPWORDS = new Set(
   `about above after again against because been before being below between both could does doing
    down during each from further have having here hers herself himself into itself just more most
