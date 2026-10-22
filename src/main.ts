@@ -6,6 +6,8 @@ import { Identifier } from "./identify/identifier.ts";
 import { liveRawEvents, normalized, replayRawEvents } from "./ingest/beeStream.ts";
 import { SessionStore } from "./ingest/sessions.ts";
 import { createBedrockProvider } from "./llm/provider.ts";
+import { startIdleWatcher } from "./notify/idle.ts";
+import { NtfyNotifier } from "./notify/ntfy.ts";
 import { Pipeline } from "./pipeline.ts";
 import { createApiServer } from "./server.ts";
 import { Store } from "./store/db.ts";
@@ -32,6 +34,8 @@ async function main() {
   const store = new Store(config.dbPath);
   const llm = createBedrockProvider(config.awsRegion, config.bedrockModelId);
   const hub = new Hub();
+  const notifier = config.ntfy ? new NtfyNotifier({ ...config.ntfy, apiToken: config.token }) : undefined;
+  console.log(`[notify] ${notifier ? `ntfy topic configured` : "disabled (NTFY_URL not set)"}`);
   const pipeline = new Pipeline({
     sessions: new SessionStore(),
     identifier: new Identifier({ store, bee, llm, ownerNames }),
@@ -40,7 +44,11 @@ async function main() {
     bee,
     llm,
     hub,
+    notifier,
   });
+  if (notifier && config.source === "live") {
+    startIdleWatcher({ notifier, lastActivity: () => pipeline.lastActivity, config: config.idleAlert });
+  }
 
   const pending = store.latestPendingFollowUp();
   if (pending) hub.publish({ followUp: pending });

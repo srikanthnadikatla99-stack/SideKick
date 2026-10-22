@@ -7,6 +7,8 @@ import type { LiveSession, SessionStore } from "./ingest/sessions.ts";
 import { transcriptText } from "./ingest/sessions.ts";
 import type { LlmProvider } from "./llm/provider.ts";
 import { draftFollowUp } from "./loops/promises.ts";
+import type { Notifier } from "./notify/ntfy.ts";
+import { noopNotifier } from "./notify/ntfy.ts";
 import type { Store } from "./store/db.ts";
 import type { BeeEvent, FollowUp } from "./types.ts";
 
@@ -18,6 +20,7 @@ export type PipelineDeps = {
   bee: BeeGateway;
   llm: LlmProvider;
   hub: Hub;
+  notifier?: Notifier;
 };
 
 const DEBOUNCE_MS = 1200;
@@ -28,10 +31,17 @@ export class Pipeline {
   private running = new Map<string, Promise<void>>();
   private dirty = new Set<string>();
   private firstCardLogged = new Set<string>();
+  private notified = new Set<string>();
+  private notifier: Notifier;
+  /** Last time Bee sent anything; drives the "Bee isn't capturing" alert. */
+  lastActivity = Date.now();
 
-  constructor(private deps: PipelineDeps) {}
+  constructor(private deps: PipelineDeps) {
+    this.notifier = deps.notifier ?? noopNotifier;
+  }
 
   async handle(event: BeeEvent): Promise<void> {
+    this.lastActivity = Date.now();
     const session = this.deps.sessions.apply(event);
     if (!session) return;
     if (event.kind === "utterance") this.schedule(session);
@@ -122,6 +132,18 @@ export class Pipeline {
     if (!live && current && current.conversationUuid !== session.conversationUuid) return;
     this.deps.hub.publish({ card: session.card });
     this.logFirstCard(session);
+    this.notifyCard(session);
+  }
+
+  /** One wrist notification per person per conversation, once the full card is ready. */
+  private notifyCard(session: LiveSession): void {
+    const card = session.card;
+    const name = card?.person?.name ?? card?.inferredName;
+    if (!card || !name || card.pending || !this.deps.sessions.isLive(session.conversationUuid)) return;
+    const key = `${session.conversationUuid}:${name.toLowerCase()}`;
+    if (this.notified.has(key)) return;
+    this.notified.add(key);
+    this.notifier.personRecognized(card).catch((e) => console.warn("[notify] card failed:", (e as Error).message));
   }
 
   private logFirstCard(session: LiveSession): void {
@@ -149,9 +171,13 @@ export class Pipeline {
       if (!text) return;
       const followUp = this.deps.store.addFollowUp({ conversationUuid: uuid, personId: card?.person?.id ?? null, text });
       this.deps.hub.publish({ followUp });
+      this.notifier
+        .followUpReady(followUp, personName)
+        .catch((e) => console.warn("[notify] follow-up failed:", (e as Error).message));
     } finally {
       this.timers.delete(uuid);
       this.firstCardLogged.delete(uuid);
+      for (const key of this.notified) if (key.startsWith(`${uuid}:`)) this.notified.delete(key);
       this.deps.identifier.forget(uuid);
       this.deps.sessions.end(uuid);
     }

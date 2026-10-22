@@ -5,6 +5,7 @@ set -euo pipefail
 
 NODE_VERSION=24.3.0
 CADDY_VERSION=2.8.4
+NTFY_VERSION=2.32.0
 MODEL_ID="${BEDROCK_MODEL_ID:-us.amazon.nova-pro-v1:0}"
 # Bedrock model access and the us.* inference profile live in this region, not necessarily the VM's.
 BEDROCK_REGION="${BEDROCK_REGION:-us-east-1}"
@@ -32,9 +33,14 @@ if [[ "$(node -v 2>/dev/null)" != "v$NODE_VERSION" ]]; then
   ln -sf /usr/local/bin/node /usr/local/bin/npm /usr/local/bin/npx /usr/bin/
 fi
 [[ -x /usr/local/bin/caddy ]] || curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_${CADDY_ARCH}.tar.gz" | tar -xz -C /usr/local/bin caddy
+if [[ ! -x /usr/local/bin/ntfy ]]; then
+  curl -fsSL "https://github.com/binwiederhier/ntfy/releases/download/v${NTFY_VERSION}/ntfy_${NTFY_VERSION}_linux_${CADDY_ARCH}.tar.gz" | tar -xz -C /tmp
+  install -m 755 "/tmp/ntfy_${NTFY_VERSION}_linux_${CADDY_ARCH}/ntfy" /usr/local/bin/ntfy
+fi
 
 id sidekick &>/dev/null || useradd --system --create-home --home-dir /var/lib/sidekick --shell /bin/bash sidekick
 id caddy &>/dev/null || useradd --system --create-home --home-dir /var/lib/caddy --shell /sbin/nologin caddy
+id ntfy &>/dev/null || useradd --system --create-home --home-dir /var/lib/ntfy --shell /sbin/nologin ntfy
 
 if [[ ! -d /opt/sidekick/app/.git ]]; then
   install -d -o sidekick -g sidekick /opt/sidekick
@@ -56,11 +62,65 @@ EOF
   umask 022
 fi
 
+# Private ntfy server: the iPhone app mirrors its notifications (with action buttons) to the watch.
+mkdir -p /etc/ntfy
+cat > /etc/ntfy/server.yml <<EOF
+base-url: "https://ntfy.$HOST"
+listen-http: "127.0.0.1:2586"
+behind-proxy: true
+cache-file: "/var/lib/ntfy/cache.db"
+cache-duration: "2h"
+auth-file: "/var/lib/ntfy/user.db"
+auth-default-access: "deny-all"
+# Only a content-free "poll request" goes upstream so iOS can wake up; messages stay on this server.
+upstream-base-url: "https://ntfy.sh"
+EOF
+
+if ! grep -q '^NTFY_TOKEN=' /etc/sidekick.env; then
+  TOPIC="sidekick-$(openssl rand -hex 8)"
+  PHONE_PASSWORD=$(openssl rand -hex 12)
+  ntfyctl() { sudo -u ntfy env NTFY_PASSWORD="${NTFY_PASSWORD:-}" /usr/local/bin/ntfy "$@"; }
+  NTFY_PASSWORD=$(openssl rand -hex 16) ntfyctl user add sidekick
+  ntfyctl access sidekick "$TOPIC" write-only
+  NTFY_TOKEN=$(ntfyctl token add sidekick | grep -oE 'tk_[A-Za-z0-9]+' | head -1)
+  NTFY_PASSWORD="$PHONE_PASSWORD" ntfyctl user add phone
+  ntfyctl access phone "$TOPIC" read-only
+  cat >> /etc/sidekick.env <<EOF
+NTFY_URL=http://127.0.0.1:2586
+NTFY_TOPIC=$TOPIC
+NTFY_TOKEN=$NTFY_TOKEN
+SIDEKICK_PUBLIC_URL=https://$HOST
+EOF
+  umask 077
+  cat > /root/sidekick-ntfy.txt <<EOF
+Server:   https://ntfy.$HOST
+Topic:    $TOPIC
+Username: phone
+Password: $PHONE_PASSWORD
+EOF
+  umask 022
+fi
+
 mkdir -p /etc/caddy
 cat > /etc/caddy/Caddyfile <<EOF
 $HOST {
   reverse_proxy 127.0.0.1:8787
 }
+ntfy.$HOST {
+  reverse_proxy 127.0.0.1:2586
+}
+EOF
+
+cat > /etc/systemd/system/ntfy.service <<'EOF'
+[Unit]
+Description=ntfy notifications for SideKick
+After=network-online.target
+[Service]
+User=ntfy
+ExecStart=/usr/local/bin/ntfy serve --config /etc/ntfy/server.yml
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
 EOF
 
 cat > /etc/systemd/system/caddy.service <<'EOF'
@@ -128,10 +188,13 @@ chmod 755 /usr/bin/sidekick-replay
 
 (cd /opt/sidekick/app && sudo -u sidekick -H npm ci --no-audit --no-fund)
 systemctl daemon-reload
-systemctl enable caddy sidekick
-# Restart so a re-run picks up a changed public IP in the Caddyfile.
-systemctl restart caddy
+systemctl enable caddy ntfy sidekick
+# Restart so a re-run picks up a changed public IP and notification settings.
+systemctl restart ntfy caddy
+systemctl try-restart sidekick
 
 echo
 echo "Public URL: https://$HOST"
-echo "Next: cd /opt/sidekick/app && sudo -u sidekick -H npx bee login && sudo systemctl restart sidekick"
+echo "Wrist notifications: subscribe in the ntfy iPhone app with:"
+cat /root/sidekick-ntfy.txt 2>/dev/null || echo "(not found: /root/sidekick-ntfy.txt)"
+echo "Next (first install only): cd /opt/sidekick/app && sudo -u sidekick -H npx bee login && sudo systemctl restart sidekick"

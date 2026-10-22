@@ -38,5 +38,19 @@ export function loadConfig() {
     beeCommand: resolveBeeCommand(),
     awsRegion: env("AWS_REGION", "us-east-1"),
     bedrockModelId: env("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0"),
+    // Wrist notifications via a self-hosted ntfy server; disabled unless NTFY_URL is set.
+    ntfy: process.env["NTFY_URL"]
+      ? {
+          url: env("NTFY_URL"),
+          topic: env("NTFY_TOPIC"),
+          token: env("NTFY_TOKEN"),
+          publicUrl: env("SIDEKICK_PUBLIC_URL"),
+        }
+      : undefined,
+    idleAlert: {
+      hours: env("SIDEKICK_ACTIVE_HOURS", "9-19"),
+      timeZone: env("SIDEKICK_TIMEZONE", "UTC"),
+      afterMinutes: Number(env("SIDEKICK_IDLE_MINUTES", "120")),
+    },
   };
 }

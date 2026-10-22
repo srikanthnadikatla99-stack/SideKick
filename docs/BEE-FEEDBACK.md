@@ -150,7 +150,8 @@ tool and updated as we build. Feeds the submission requirements in
 
 ### Product feedback
 - **Used for:** Writing the approved follow-up back into Bee (`todos create --text [--alarm-at]`).
-- **Worked well:** _…_
+- **Worked well:** First call from the EC2 server succeeded and returned the new todo id; the todo
+  appeared in the Bee iOS app immediately. Simple, predictable write path.
 - **Needs work:** _…_
 
 ---
@@ -178,3 +179,4 @@ tool and updated as we build. Feeds the submission requirements in
 | R-01 | Speaker identity that persists across conversations (a stable ID for the same voice instead of a fresh `speaker_N` each time) | Real-time "who am I talking to" apps currently have to guess identity from text; a stable voice ID would make identification far more reliable. | Important |
 | R-02 | Event name in `stream --json` output and in the library's `JsonSseEvent` (see F-01) | One connection instead of one per event type; reliable event ordering. | Important |
 | R-03 | Typed responses for the library (see F-04) | Faster, safer integrations; fewer shape guesses against live data. | Nice-to-have |
+| R-04 | Let other apps start/stop/check Bee capture (App Intents / Shortcuts actions such as "Start Bee capture", plus a capture-state field in the API) | Companion apps like SideKick can't launch or control the Bee watch app, so users must juggle two apps; a "Start Bee" intent would allow a single entry point and a "Bee isn't capturing" warning. | Important |
