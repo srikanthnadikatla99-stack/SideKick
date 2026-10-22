@@ -65,7 +65,7 @@ export class NtfyNotifier implements Notifier {
         ];
     await this.publish({
       title: name,
-      message: lines.join("\n") || "Recognized from your conversation",
+      message: [...lines, "Open SideKick on your watch for details."].join("\n"),
       tags: ["bust_in_silhouette"],
       priority: 4,
       sequence_id: `card-${card.conversationUuid}`,
@@ -76,7 +76,7 @@ export class NtfyNotifier implements Notifier {
   async followUpReady(followUp: FollowUp, personName: string): Promise<void> {
     await this.publish({
       title: `Follow up with ${personName}`,
-      message: followUp.text,
+      message: `${followUp.text}\nOpen SideKick to add it to Bee.`,
       tags: ["memo"],
       priority: 4,
       sequence_id: `followup-${followUp.id}`,

@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import type { FollowUp, Person } from "../types.ts";
+import type { Card, FollowUp, Person } from "../types.ts";
 import { sameName } from "../identify/nameFromSpeech.ts";
 
 type PersonRow = { id: string; name: string; role: string | null; org: string | null; how_met: string | null };
@@ -77,7 +77,22 @@ export class Store {
         bee_todo_id TEXT,
         created_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
     `);
+  }
+
+  saveLatestCard(card: Card | null): void {
+    this.db
+      .prepare("INSERT INTO app_state (key, value) VALUES ('latest_card', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run(JSON.stringify(card));
+  }
+
+  loadLatestCard(): Card | null {
+    const row = this.db.prepare("SELECT value FROM app_state WHERE key = 'latest_card'").get() as { value: string } | undefined;
+    return row ? (JSON.parse(row.value) as Card | null) : null;
   }
 
   getPerson(id: string): Person | undefined {

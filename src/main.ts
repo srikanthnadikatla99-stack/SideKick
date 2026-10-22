@@ -33,7 +33,7 @@ async function main() {
 
   const store = new Store(config.dbPath);
   const llm = createBedrockProvider(config.awsRegion, config.bedrockModelId);
-  const hub = new Hub();
+  const hub = new Hub((card) => store.saveLatestCard(card));
   const notifier = config.ntfy ? new NtfyNotifier({ ...config.ntfy, apiToken: config.token }) : undefined;
   console.log(`[notify] ${notifier ? `ntfy topic configured` : "disabled (NTFY_URL not set)"}`);
   const pipeline = new Pipeline({
@@ -52,6 +52,9 @@ async function main() {
 
   const pending = store.latestPendingFollowUp();
   if (pending) hub.publish({ followUp: pending });
+  // The watch may open long after the wrist notification, even across a restart.
+  const lastCard = store.loadLatestCard();
+  if (lastCard && Date.now() - Date.parse(lastCard.updatedAt) < 6 * 3_600_000) hub.publish({ card: lastCard });
 
   const server = createApiServer({ hub, pipeline, token: config.token });
   server.listen(config.port, config.host, () => console.log(`[server] http://${config.host}:${config.port}`));

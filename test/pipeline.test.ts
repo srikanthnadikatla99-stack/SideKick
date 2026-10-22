@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { CardAssembler } from "../src/context/assembler.ts";
 import { Hub } from "../src/hub.ts";
 import { Identifier } from "../src/identify/identifier.ts";
@@ -30,6 +32,19 @@ function build() {
   });
   return { store, hub, pipeline, todos };
 }
+
+test("the latest card survives a server restart", () => {
+  const path = `${tmpdir()}/sidekick-test-${process.pid}.db`;
+  const hub = new Hub((card) => new Store(path).saveLatestCard(card));
+  const card = { conversationUuid: "c1", person: null, inferredName: "Riya", confidence: 0.8, confirmed: false } as never;
+  hub.publish({ card });
+  assert.equal(new Store(path).loadLatestCard()?.inferredName, "Riya");
+  hub.publish({ followUp: null });
+  assert.equal(new Store(path).loadLatestCard()?.inferredName, "Riya");
+  rmSync(path, { force: true });
+  rmSync(`${path}-wal`, { force: true });
+  rmSync(`${path}-shm`, { force: true });
+});
 
 test("rehearsal: a known person is rescued without their name being said", async () => {
   const store = new Store(":memory:");

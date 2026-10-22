@@ -91,7 +91,8 @@ const STOPWORDS = new Set(
    then there these they this those through under until very were what when where which while who
    whom will with would your yours yourself yourselves yeah okay really think know going like
    right thing things gonna wanna kind sort maybe actually basically something anything also well
-   want good great sure thanks thank much time today said says tell told mean pretty`.split(/\s+/),
+   want good great sure thanks thank much time today said says tell told mean pretty
+   still even ever always never already yet just once back away`.split(/\s+/),
 );
 
 /** Topic keywords from a transcript, most frequent first; used as learned identification cues. */

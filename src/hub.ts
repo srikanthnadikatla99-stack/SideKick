@@ -7,12 +7,15 @@ export class Hub {
   private snapshot: Snapshot = { version: 0, card: null, followUp: null };
   private waiters = new Set<() => void>();
 
+  constructor(private onCardChange?: (card: Card | null) => void) {}
+
   current(): Snapshot {
     return this.snapshot;
   }
 
   publish(change: Partial<Omit<Snapshot, "version">>): void {
     this.snapshot = { ...this.snapshot, ...change, version: this.snapshot.version + 1 };
+    if ("card" in change) this.onCardChange?.(this.snapshot.card);
     for (const wake of this.waiters) wake();
     this.waiters.clear();
   }
