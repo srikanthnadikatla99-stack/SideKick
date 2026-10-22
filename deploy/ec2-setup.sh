@@ -190,8 +190,9 @@ if [[ -n "$(holders)" ]]; then
 fi
 trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
 cd /opt/sidekick/app
-# Replays use a throwaway memory so test people never leak into the live one.
+# Replays run on a throwaway copy of the live memory: they see known people, but changes never leak back.
 rm -f /var/lib/sidekick/replay.db*
+for f in /var/lib/sidekick/sidekick.db*; do [[ -e "$f" ]] && cp -p "$f" "${f/sidekick.db/replay.db}"; done
 sudo -u sidekick -H bash -c "set -a; . /etc/sidekick.env; SIDEKICK_DB=/var/lib/sidekick/replay.db SIDEKICK_SOURCE=replay SIDEKICK_REPLAY_FILE='$FILE' npx tsx src/main.ts"
 EOF
 chmod 755 /usr/bin/sidekick-replay

@@ -22,7 +22,8 @@ type Candidate = { name: string; score: number; evidence: string[]; spellings: M
 export const MIN_CARD_CONFIDENCE = 0.3;
 const MAX_EVIDENCE_CHARS = 90;
 
-const SEMANTIC_EVERY_N_UTTERANCES = 3;
+// Re-ask Bee + Bedrock every couple of lines so a name can be rescued early without one being said.
+const SEMANTIC_EVERY_N_UTTERANCES = 2;
 const SKIP_SEMANTIC_ABOVE = 0.85;
 
 const SEMANTIC_SYSTEM = `You identify who the wearer of a Bee wearable is talking to right now.
@@ -72,7 +73,7 @@ export class Identifier {
       );
     }
 
-    const keywords = new Set(topicKeywords(session.utterances, 30));
+    const keywords = new Set(topicKeywords(session.utterances, 500));
     const cueHits = new Map<string, { weight: number; cues: string[] }>();
     for (const { personId, cue, weight } of store.allCues()) {
       if (!keywords.has(cue)) continue;
@@ -83,7 +84,7 @@ export class Identifier {
     }
     for (const [personId, hit] of cueHits) {
       const person = store.getPerson(personId);
-      if (person) add(person.name, Math.min(0.5, 0.08 * hit.weight), `Topics you've discussed before: ${hit.cues.slice(0, 4).join(", ")}`);
+      if (person) add(person.name, Math.min(0.6, 0.1 * hit.weight), `Topics you've discussed before: ${hit.cues.slice(0, 4).join(", ")}`);
     }
 
     const bestSoFar = Math.max(0, ...[...candidates.values()].map((c) => c.score));

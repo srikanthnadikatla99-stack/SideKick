@@ -4,8 +4,9 @@ export type NameMention = { name: string; kind: "self" | "addressed"; speaker: s
 
 const NAME = String.raw`(\p{L}[\p{L}'’-]+(?:\s+\p{L}[\p{L}'’-]+)?)`;
 const SELF_INTRO = new RegExp(String.raw`\b(?:i'?m|i am|my name is|my name's|this is|call me)\s+${NAME}`, "giu");
+// Only a comma or space may separate greeting and name; "Hey! Long time" starts a new sentence.
 const ADDRESS = new RegExp(
-  String.raw`\b(?:hey|hi|hello|thanks|thank you|nice to meet you|good to see you|great to see you|bye|cheers)[,!.\s]+${NAME}`,
+  String.raw`\b(?:hey|hi|hello|thanks|thank you|nice to meet you|good to see you|great to see you|bye|cheers)[,\s]+${NAME}`,
   "giu",
 );
 
@@ -14,7 +15,8 @@ const NOT_NAMES = new Set(
   `sorry good fine great glad happy here there just not so really very well okay ok sure back done
    going doing trying looking thinking working there's it it's that everyone everybody all guys
    team folks man dude again yes no the a an and but from with also actually
-   i i'm i’m im my we we're you you're there's how what`.split(/\s+/),
+   i i'm i’m im my we we're you you're there's how what
+   long nice welcome morning afternoon evening buddy mate sir madam boss`.split(/\s+/),
 );
 
 function cleanName(raw: string): string | undefined {

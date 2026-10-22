@@ -32,7 +32,7 @@ export class Pipeline {
   private timers = new Map<string, NodeJS.Timeout>();
   private running = new Map<string, Promise<void>>();
   private dirty = new Set<string>();
-  private firstCardLogged = new Set<string>();
+  private lastLogged = new Map<string, string>();
   private notified = new Set<string>();
   private notifier: Notifier;
   /** Last time Bee sent anything; drives the "Bee isn't capturing" alert. */
@@ -150,11 +150,18 @@ export class Pipeline {
   }
 
   private logFirstCard(session: LiveSession): void {
-    const name = session.card?.person?.name ?? session.card?.inferredName;
-    if (!name || this.firstCardLogged.has(session.conversationUuid)) return;
-    this.firstCardLogged.add(session.conversationUuid);
-    const first = session.utterances[0]?.at ?? session.startedAt;
-    console.log(`[pipeline] card for ${name} after ${Date.now() - first}ms (confidence ${session.card!.confidence})`);
+    const card = session.card;
+    const name = card?.person?.name ?? card?.inferredName;
+    if (!card || !name) return;
+    const summary = `${name}:${card.confidence}:${card.confirmed}`;
+    if (this.lastLogged.get(session.conversationUuid) === summary) return;
+    this.lastLogged.set(session.conversationUuid, summary);
+    const elapsed = Date.now() - session.startedAt;
+    console.log(
+      `[pipeline] card for ${name} after ${elapsed}ms, ${session.utterances.length} lines heard ` +
+        `(confidence ${card.confidence}${card.confirmed ? ", confirmed" : ""}${card.pending ? ", loading history" : ""})` +
+        (card.evidence[0] ? ` — ${card.evidence[0]}` : ""),
+    );
   }
 
   private async closeLoop(session: LiveSession, summary?: string): Promise<void> {
@@ -179,7 +186,7 @@ export class Pipeline {
         .catch((e) => console.warn("[notify] follow-up failed:", (e as Error).message));
     } finally {
       this.timers.delete(uuid);
-      this.firstCardLogged.delete(uuid);
+      this.lastLogged.delete(uuid);
       for (const key of this.notified) if (key.startsWith(`${uuid}:`)) this.notified.delete(key);
       this.deps.identifier.forget(uuid);
       this.deps.sessions.end(uuid);

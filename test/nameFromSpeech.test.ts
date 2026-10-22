@@ -22,6 +22,11 @@ test("excludes the wearer's own name", () => {
   assert.deepEqual(extractNameMentions([u("s", "Thanks Alex, my name is Alex")], ["Alex"]), []);
 });
 
+test("a greeting followed by a new sentence is not a name", () => {
+  assert.deepEqual(extractNameMentions([u("s", "Hey! Long time. Hi. Welcome back. Thanks. Great work.")]), []);
+  assert.deepEqual(extractNameMentions([u("s", "Hi Riya, how are you?")]).map((m) => m.name), ["Riya"]);
+});
+
 test("topic keywords skip stopwords and rank by frequency", () => {
   const words = topicKeywords([u("a", "The onboarding doc for Northwind hiring"), u("b", "Northwind hiring is slow")]);
   assert.deepEqual(words.slice(0, 2), ["northwind", "hiring"]);

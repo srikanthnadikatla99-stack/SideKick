@@ -1,0 +1,14 @@
+{"t":0,"type":"new-conversation","data":{"type":"new-conversation","conversation":{"id":999000001,"uuid":"rehearsal-recall","state":"capturing","title":null}}}
+{"t":1500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":1.0,"end":3.5,"text":"Hey! Long time. How's the wearable project going?"}}}
+{"t":4500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":4.0,"end":6.0,"text":"Going well, busy. How about you?"}}}
+{"t":7500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":6.5,"end":9.5,"text":"Crazy at Northwind. The runners app launches next month."}}}
+{"t":10500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":10.0,"end":13.0,"text":"And I'm deep into marathon training. Ran 25 kilometers on Sunday."}}}
+{"t":13000,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":13.5,"end":14.5,"text":"Wow, that's serious."}}}
+{"t":16000,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":15.0,"end":19.0,"text":"And Mango woke me up at 5 a.m., so I'm running on filter coffee today."}}}
+{"t":19500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":19.5,"end":22.0,"text":"How's the Mumbai Marathon prep? January, right?"}}}
+{"t":22500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":22.5,"end":25.0,"text":"Yes, January. Still bouldering on weekends too."}}}
+{"t":26000,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":25.5,"end":30.0,"text":"Sorry, I still owe you that onboarding deck for the pilot. I'll send it today."}}}
+{"t":29500,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":30.5,"end":33.0,"text":"No worries. I still need to send you the hiring plan."}}}
+{"t":33000,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":33.5,"end":37.0,"text":"Let's set up a call next week with your engineering lead. Late morning, of course."}}}
+{"t":36000,"type":"new-utterance","data":{"type":"new-utterance","conversation_uuid":"rehearsal-recall","utterance":{"start":37.5,"end":38.5,"text":"Perfect. Bye!"}}}
+{"t":46000,"type":"update-conversation","data":{"type":"update-conversation","conversation":{"id":999000001,"uuid":"rehearsal-recall","state":"processed","short_summary":"Catch-up about the runners app launch, marathon training, the pending onboarding deck and hiring plan, and a call with the engineering lead next week."}}}

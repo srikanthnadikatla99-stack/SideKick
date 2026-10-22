@@ -31,6 +31,36 @@ function build() {
   return { store, hub, pipeline, todos };
 }
 
+test("rehearsal: a known person is rescued without their name being said", async () => {
+  const store = new Store(":memory:");
+  const riya = store.upsertPerson({ name: "Riya" });
+  store.addCues(riya.id, ["northwind", "marathon", "mango", "coffee", "bouldering", "onboarding"]);
+  const { bee } = fakeBee();
+  // Semantic search can't find her here, so this exercises the learned-topic path alone.
+  const { llm } = fakeLlm({ semanticName: null });
+  const hub = new Hub();
+  const pipeline = new Pipeline({
+    sessions: new SessionStore(),
+    identifier: new Identifier({ store, bee, llm, ownerNames: ["Srikanth"] }),
+    assembler: new CardAssembler({ bee, llm, store }),
+    store,
+    bee,
+    llm,
+    hub,
+  });
+  const rehearsal = new URL("./fixtures/rehearsal-recall.jsonl", import.meta.url).pathname;
+  let namedAtLine = -1;
+  let lines = 0;
+  for await (const event of normalized(replayRawEvents(rehearsal, 1000))) {
+    if (event.kind === "conversation-processed") break;
+    await pipeline.handle(event);
+    if (event.kind === "utterance") lines++;
+    await new Promise((r) => setTimeout(r, 1300));
+    if (namedAtLine === -1 && hub.current().card?.person?.name === "Riya") namedAtLine = lines;
+  }
+  assert.ok(namedAtLine > 0 && namedAtLine <= 6, `named after ${namedAtLine} lines`);
+});
+
 test("replay produces a card with open loops, then a follow-up written back to Bee", async () => {
   const { hub, pipeline, todos } = build();
   let sawCard = false;
