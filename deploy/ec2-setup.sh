@@ -76,10 +76,30 @@ auth-default-access: "deny-all"
 upstream-base-url: "https://ntfy.sh"
 EOF
 
+cat > /etc/systemd/system/ntfy.service <<'EOF'
+[Unit]
+Description=ntfy notifications for SideKick
+After=network-online.target
+[Service]
+User=ntfy
+ExecStart=/usr/local/bin/ntfy serve --config /etc/ntfy/server.yml
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+# The ntfy user/token CLI refuses to run until the server has created its auth database.
+systemctl daemon-reload
+systemctl restart ntfy
+for _ in $(seq 1 20); do [[ -f /var/lib/ntfy/user.db ]] && break; sleep 0.5; done
+[[ -f /var/lib/ntfy/user.db ]] || { echo "ntfy did not start:"; journalctl -u ntfy -n 20 --no-pager; exit 1; }
+
 if ! grep -q '^NTFY_TOKEN=' /etc/sidekick.env; then
   TOPIC="sidekick-$(openssl rand -hex 8)"
   PHONE_PASSWORD=$(openssl rand -hex 12)
   ntfyctl() { sudo -u ntfy env NTFY_PASSWORD="${NTFY_PASSWORD:-}" /usr/local/bin/ntfy "$@"; }
+  # Remove leftovers from an earlier interrupted run so re-running is safe.
+  ntfyctl user del sidekick >/dev/null 2>&1 || true
+  ntfyctl user del phone >/dev/null 2>&1 || true
   NTFY_PASSWORD=$(openssl rand -hex 16) ntfyctl user add sidekick
   ntfyctl access sidekick "$TOPIC" write-only
   NTFY_TOKEN=$(ntfyctl token add sidekick | grep -oE 'tk_[A-Za-z0-9]+' | head -1)
@@ -109,18 +129,6 @@ $HOST {
 ntfy.$HOST {
   reverse_proxy 127.0.0.1:2586
 }
-EOF
-
-cat > /etc/systemd/system/ntfy.service <<'EOF'
-[Unit]
-Description=ntfy notifications for SideKick
-After=network-online.target
-[Service]
-User=ntfy
-ExecStart=/usr/local/bin/ntfy serve --config /etc/ntfy/server.yml
-Restart=on-failure
-[Install]
-WantedBy=multi-user.target
 EOF
 
 cat > /etc/systemd/system/caddy.service <<'EOF'
