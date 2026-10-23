@@ -71,7 +71,8 @@ export async function* liveRawEvents(bee: BeeClient, signal?: AbortSignal): Asyn
   const start = Date.now();
 
   const streams = STREAM_TYPES.map((type) => {
-    const stream = bee.sse.streamJson({ types: [type], signal });
+    // Passing the signal to the child process makes Node emit an unhandled AbortError on shutdown; kill it ourselves.
+    const stream = bee.sse.streamJson({ types: [type] });
     (async () => {
       try {
         for await (const event of stream.events) {
@@ -86,11 +87,17 @@ export async function* liveRawEvents(bee: BeeClient, signal?: AbortSignal): Asyn
       }
     })();
     return stream;
+  const closeAll = () => streams.forEach((s) => s.close());
+  signal?.addEventListener("abort", () => {
+    closeAll();
+    wake?.();
+  }, { once: true });
   });
 
   try {
     while (true) {
       while (queue.length > 0) yield queue.shift()!;
+      if (signal?.aborted) return;
       if (failure) throw failure;
       if (open === 0) return;
       await new Promise<void>((resolve) => (wake = resolve));

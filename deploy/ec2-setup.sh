@@ -189,6 +189,8 @@ if [[ -n "$(holders)" ]]; then
   echo "Port 8787 is still in use:"; ss -ltnp 'sport = :8787'; systemctl start sidekick; exit 1
 fi
 trap 'systemctl start sidekick; echo "Live service resumed."' EXIT
+# Closing the browser terminal sends HUP; turn it into a normal exit so the live service still resumes.
+trap 'exit 0' HUP INT TERM
 cd /opt/sidekick/app
 # Replays run on a throwaway copy of the live memory: they see known people, but changes never leak back.
 rm -f /var/lib/sidekick/replay.db*
