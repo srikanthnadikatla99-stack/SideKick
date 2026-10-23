@@ -135,5 +135,3 @@ type Card = {
 - **Latency budget** — target a visible card within ~5s of the conversation starting.
 - **Replayability** — the ingestion layer can be fed recorded real SSE events for deterministic
   tests and a reliable demo.
-- **Rule compliance** — the repo genuinely imports and calls Bee (SSE ingest, reads, and a todo
-  write), satisfying the track's "call the technology in code" requirement.

@@ -126,11 +126,7 @@ Requires the Bee CLI installed and an authenticated session.
 
 ---
 
-## Hackathon compliance notes
+## Replay
 
-- The repo must **actually call** Bee in code (import/entry point/loaded config), not just a
-  README mention. SideKick satisfies this via SSE ingestion, neural search / facts reads, and a
-  `todos create` write-back.
-- The demo video and code must show the project using **live Bee data** to do something useful.
-- Replaying **previously recorded real** Bee events for demo reliability is acceptable; the demo
-  must still clearly show live Bee data in use.
+- Recorded real Bee events can be replayed for deterministic tests and demos; facts, neural
+  search, and todo write-back still call live Bee.

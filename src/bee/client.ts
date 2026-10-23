@@ -1,6 +1,6 @@
 import { createBeeClient, type BeeClient } from "@beeai/cli/lib";
 
-/** The subset of Bee that SideKick depends on; faked in tests. */
+
 export interface BeeGateway {
   me(): Promise<unknown>;
   searchFacts(query: string, limit?: number): Promise<unknown>;

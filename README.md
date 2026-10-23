@@ -7,15 +7,13 @@ recognizes who you're talking to, and discreetly surfaces a glanceable card — 
 are, your history together, and any open promises between you — before the handshake
 ends. After the conversation, it writes follow-up todos back into Bee.
 
-> Built for the **Amazon Developer Hackathon 2026 — Bee (Wearable AI) track.**
-
 ---
 
 ## Why SideKick is only possible with Bee
 
 SideKick passes two tests that rule out every phone voice assistant and even Bee's own app:
 
-1. **Could ChatGPT ever have had this input?** No. SideKick is built on what *other people*
+1. **Could a chat or voice assistant ever have had this input?** No. SideKick is built on what *other people*
    say in real, in-person conversations you never recorded on purpose. A phone assistant
    only hears what you deliberately say *to it*; Bee passively captures multi-party
    conversations with speaker identification.
@@ -147,11 +145,9 @@ bee stream --agent    # live event stream — speak near your watch to see utter
 ## Documentation
 
 - [docs/IDEA.md](docs/IDEA.md) — the concept, differentiation, and demo flow.
-- [docs/PLAN.md](docs/PLAN.md) — the detailed build plan and milestones.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — components, data flow, and design decisions.
 - [docs/BEE-INTEGRATION.md](docs/BEE-INTEGRATION.md) — Bee CLI/MCP/API reference used by SideKick.
 - [docs/BEE-FEEDBACK.md](docs/BEE-FEEDBACK.md) — product feedback, friction log, and feature requests per Bee tool.
-- [docs/HACKATHON-SUBMISSION.md](docs/HACKATHON-SUBMISSION.md) — requirements, checklist, and submission templates.
 
 ---
 
