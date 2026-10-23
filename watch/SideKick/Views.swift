@@ -264,7 +264,12 @@ struct ContentView: View {
         .animation(.spring(duration: 0.3), value: store.toast)
         .animation(.default, value: store.card)
         .onChange(of: scenePhase, initial: true) { _, phase in
-            phase == .background ? store.stop() : store.start()
+            switch phase {
+            // A paused app's long-poll may be stuck on a dead connection; always start fresh when shown.
+            case .active: store.restart()
+            case .background: store.stop()
+            default: break
+            }
         }
     }
 }

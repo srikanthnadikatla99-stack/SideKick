@@ -1,10 +1,10 @@
 import Foundation
 
-/// Sample states for screenshots and UI review; launch with `-SideKickDemo <idle|pending|card|followup>`.
+/// Sample states for screenshots and UI review; launch with `-SideKickDemo <idle|pending|card|followup|late>`.
 enum DemoData {
     static func snapshot(_ variant: String) -> Snapshot {
         switch variant {
-        case "idle": Snapshot(version: 0, card: nil, followUp: nil)
+        case "idle", "late": Snapshot(version: 0, card: nil, followUp: nil)
         case "pending": Snapshot(version: 1, card: pendingCard, followUp: nil)
         case "followup": Snapshot(version: 3, card: fullCard, followUp: followUp)
         default: Snapshot(version: 2, card: fullCard, followUp: nil)

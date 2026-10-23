@@ -26,6 +26,15 @@ final class CardStore {
             card = snapshot.card
             followUp = snapshot.followUp
             connected = true
+            // "late" mimics real use: the app is open on the idle screen when the card, then the follow-up, arrive.
+            if variant == "late" {
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(3))
+                    self?.apply(Snapshot(version: 1, card: DemoData.fullCard, followUp: nil))
+                    try? await Task.sleep(for: .seconds(4))
+                    self?.apply(Snapshot(version: 2, card: DemoData.fullCard, followUp: DemoData.followUp))
+                }
+            }
             return
         }
         self.client = client
@@ -60,6 +69,11 @@ final class CardStore {
     func stop() {
         loop?.cancel()
         loop = nil
+    }
+
+    func restart() {
+        stop()
+        start()
     }
 
     func confirm() async {

@@ -27,8 +27,9 @@ struct SideKickClient {
         self.baseURL = url
         self.token = token
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 40
-        config.waitsForConnectivity = true
+        // Slightly above the server's 25 s long-poll so dead connections surface quickly.
+        config.timeoutIntervalForRequest = 30
+        config.waitsForConnectivity = false
         self.session = URLSession(configuration: config)
     }
 
