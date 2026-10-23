@@ -51,6 +51,7 @@ export class NtfyNotifier implements Notifier {
     const lines = [
       subtitle,
       loop ? `${loop.direction === "you_owe" ? "⚠️ You owe" : "↩️ They owe"}: ${loop.text}` : "",
+      (card.howYouMet ?? card.person?.howYouMet) ? `Met: ${card.howYouMet ?? card.person?.howYouMet}` : "",
       card.lastSpoke ? `Last: ${card.lastSpoke.when} · ${card.lastSpoke.topic}` : "",
       card.dontForget[0] ? `💡 ${card.dontForget[0]}` : "",
     ].filter(Boolean);

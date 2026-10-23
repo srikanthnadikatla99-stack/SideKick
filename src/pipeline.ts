@@ -137,15 +137,16 @@ export class Pipeline {
     this.notifyCard(session);
   }
 
-  /** One wrist notification per person per conversation, once the full card is ready. */
+  /** One wrist notification per person per conversation, as soon as we're fairly sure; details live in the app. */
   private notifyCard(session: LiveSession): void {
     const card = session.card;
     const name = card?.person?.name ?? card?.inferredName;
-    if (!card || !name || card.pending || !this.deps.sessions.isLive(session.conversationUuid)) return;
+    if (!card || !name || !this.deps.sessions.isLive(session.conversationUuid)) return;
     if (!card.confirmed && card.confidence < NOTIFY_MIN_CONFIDENCE) return;
     const key = `${session.conversationUuid}:${name.toLowerCase()}`;
     if (this.notified.has(key)) return;
     this.notified.add(key);
+    console.log(`[notify] sent ${name} after ${Date.now() - session.startedAt}ms`);
     this.notifier.personRecognized(card).catch((e) => console.warn("[notify] card failed:", (e as Error).message));
   }
 

@@ -69,7 +69,7 @@ test("confirmed cards are sent without confirm buttons", async () => {
   assert.deepEqual(calls[0]!.body.actions, []);
 });
 
-test("pipeline notifies once per person, after the full card, then sends the follow-up", async () => {
+test("pipeline notifies once per person, as soon as recognised, then sends the follow-up", async () => {
   const sent: string[] = [];
   const notifier: Notifier = {
     personRecognized: async (c) => void sent.push(`card:${c.inferredName}:${c.pending}`),
@@ -93,7 +93,7 @@ test("pipeline notifies once per person, after the full card, then sends the fol
     if (event.kind === "conversation-processed") await new Promise((r) => setTimeout(r, 1300));
     await pipeline.handle(event);
   }
-  assert.deepEqual(sent, ["card:Sarah Chen:false", "followup:Sarah Chen"]);
+  assert.deepEqual(sent, ["card:Sarah Chen:true", "followup:Sarah Chen"]);
 });
 
 test("idle alert only fires during active hours after the silence threshold", () => {
